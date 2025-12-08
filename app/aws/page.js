@@ -197,26 +197,7 @@ export default function AwsPage() {
 
       const s = [];
 
-      // MANA
-      if (Mana?.length > 0) {
-        const d = Mana[0];
-        s.push({
-          name: "mana",
-          temperature: Number(d.temperature || 0).toFixed(1),
-          pressure: Number(d.pressure || 0).toFixed(1),
-          humidity: Number(d.relative_humidity || 0).toFixed(1),
-          rain: Number(d.rain || 0).toFixed(1),
-          precipitation: Number(d.precipitation || 0).toFixed(1),
-          bucket_weight: Number(d.bucket_weight || 0).toFixed(1),
-          PIR: Number(d.PIR || 0).toFixed(1),
-          avg_PIR: Number(d.avg_PIR || 0).toFixed(1),
-          wind_speed: Number(d.windspeed || 0).toFixed(1),
-          wind_direction: Number(d.winddirection || 0).toFixed(1),
-          lastUpdate: d.timestamp || new Date().toISOString(),
-        });
-      }
-
-      // LAMBAGAD
+      // LAMBAGAD (Barrage) - First
       if (Lambagad?.length > 0) {
         const d = Lambagad[0];
         s.push({
@@ -235,7 +216,26 @@ export default function AwsPage() {
         });
       }
 
-      // ⭐ VASUDHARA (NEW)
+      // MANA - Second
+      if (Mana?.length > 0) {
+        const d = Mana[0];
+        s.push({
+          name: "mana",
+          temperature: Number(d.temperature || 0).toFixed(1),
+          pressure: Number(d.pressure || 0).toFixed(1),
+          humidity: Number(d.relative_humidity || 0).toFixed(1),
+          rain: Number(d.rain || 0).toFixed(1),
+          precipitation: Number(d.precipitation || 0).toFixed(1),
+          bucket_weight: Number(d.bucket_weight || 0).toFixed(1),
+          PIR: Number(d.PIR || 0).toFixed(1),
+          avg_PIR: Number(d.avg_PIR || 0).toFixed(1),
+          wind_speed: Number(d.windspeed || 0).toFixed(1),
+          wind_direction: Number(d.winddirection || 0).toFixed(1),
+          lastUpdate: d.timestamp || new Date().toISOString(),
+        });
+      }
+
+      // VASUDHARA - Third
       if (Vasudhara?.length > 0) {
         const d = Vasudhara[0];
         s.push({

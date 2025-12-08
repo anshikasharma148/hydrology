@@ -61,11 +61,18 @@ const degreesToDirection = (degrees) => {
   return windDirectionLabels[index];
 };
 
-// Colors
+// Colors - Order: Barrage (Lambagad), Mana, Vasudhara
 const colors = {
-  Mana: '#3b82f6',
   Lambagad: '#f59e0b',
+  Mana: '#3b82f6',
   Vasudhara: '#8b5cf6',
+};
+
+// Display names mapping
+const displayNames = {
+  Lambagad: 'Barrage',
+  Mana: 'Mana',
+  Vasudhara: 'Vasudhara',
 };
 
 // IST Conversion
@@ -129,7 +136,7 @@ const CustomTooltip = ({ active, payload, label }) => {
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: entry.color }}
                 />
-                <span className="text-white font-semibold text-sm">{station}</span>
+                <span className="text-white font-semibold text-sm">{displayNames[station] || station}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-white font-bold text-base">
@@ -169,7 +176,7 @@ export default function ParameterGraphs() {
   const [data, setData] = useState([]);
   const [latestTimestamp, setLatestTimestamp] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [windDirections, setWindDirections] = useState({ Mana: null, Lambagad: null, Vasudhara: null });
+  const [windDirections, setWindDirections] = useState({ Lambagad: null, Mana: null, Vasudhara: null });
 
   const findStationKey = (obj, arr) => {
     for (const k of arr) if (obj[k] !== undefined) return k;
@@ -199,8 +206,8 @@ export default function ParameterGraphs() {
         const vasuKey = findStationKey(obj, ['Vasudhara', 'vasudhara']);
 
         const stations = [
-          { name: 'Mana', key: manaKey },
           { name: 'Lambagad', key: lambKey },
+          { name: 'Mana', key: manaKey },
           { name: 'Vasudhara', key: vasuKey },
         ];
 
@@ -230,7 +237,7 @@ export default function ParameterGraphs() {
         };
 
         // Store latest wind directions
-        const latestWindDirs = { Mana: null, Lambagad: null, Vasudhara: null };
+        const latestWindDirs = { Lambagad: null, Mana: null, Vasudhara: null };
 
         stations.forEach((st) => {
           if (!st.key) return;
@@ -361,7 +368,7 @@ export default function ParameterGraphs() {
                               style={{ backgroundColor: colors[stat.station] }}
                             />
                             <span className="font-bold text-gray-800 text-sm sm:text-base">
-                              {stat.station}
+                              {displayNames[stat.station] || stat.station}
                             </span>
                           </div>
                           {change !== null && (
@@ -458,7 +465,7 @@ export default function ParameterGraphs() {
                           wrapperStyle={{ paddingTop: '15px', paddingBottom: '10px' }}
                           iconType="line"
                           iconSize={20}
-                          formatter={(value) => <span style={{ fontWeight: 600, fontSize: '13px' }}>{value}</span>}
+                          formatter={(value) => <span style={{ fontWeight: 600, fontSize: '13px' }}>{displayNames[value] || value}</span>}
                         />
                         <Brush
                           dataKey="time"
@@ -484,7 +491,7 @@ export default function ParameterGraphs() {
                               stroke: '#fff',
                               style: { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }
                             }}
-                            name={station}
+                            name={displayNames[station] || station}
                             style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
                           />
                         ))}
@@ -629,7 +636,7 @@ export default function ParameterGraphs() {
                                   }}
                                 >
                                   <div className="text-white font-bold text-xs sm:text-sm text-center whitespace-nowrap">
-                                    {station}
+                                    {displayNames[station] || station}
                                   </div>
                                   <div className="text-white/90 text-[10px] text-center mt-0.5 whitespace-nowrap">
                                     {windDir.toFixed(0)}° {directionLabel}
@@ -656,7 +663,7 @@ export default function ParameterGraphs() {
                                 style={{ backgroundColor: colors[station] }}
                               />
                               <span className="text-xs font-semibold text-gray-700">
-                                {station}: {windDir !== null && !isNaN(windDir) ? `${windDir.toFixed(0)}° (${directionLabel})` : 'N/A'}
+                                {displayNames[station] || station}: {windDir !== null && !isNaN(windDir) ? `${windDir.toFixed(0)}° (${directionLabel})` : 'N/A'}
                               </span>
                             </div>
                           );

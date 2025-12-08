@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, Brush, Area
+  Tooltip, Legend, ResponsiveContainer, Brush
 } from 'recharts';
 
 /* We will detect station names from API */
@@ -31,7 +31,7 @@ const WaterTrends = () => {
 
         if (json?.data) {
           const stations = Object.keys(json.data);
-          setStationNames(stations.map(s => s.toLowerCase())); // keeps UI same
+          setStationNames(stations.map(s => s.toLowerCase()));
 
           const merged = mergeStationData(json.data, selectedDays);
           setGraphData(merged);
@@ -57,7 +57,7 @@ const WaterTrends = () => {
     return `${hours}:${minutes} ${ampm}`;
   };
 
-  /* FIXED MERGE FUNCTION (UI UNCHANGED) */
+  /* MERGE FUNCTION - Keep all station data */
   const mergeStationData = (data, days) => {
     const merged = {};
 
@@ -100,7 +100,7 @@ const WaterTrends = () => {
       });
     });
 
-    /* FIX: sort by timestamp so Mana appears correctly */
+    /* Sort by timestamp */
     return Object.values(merged).sort((a, b) =>
       new Date(a.timestamp) - new Date(b.timestamp)
     );
@@ -113,10 +113,22 @@ const WaterTrends = () => {
     return isNaN(num) ? null : num;
   };
 
-  /* Tooltip UI (UNCHANGED) */
+  /* Get data for a specific station and parameter */
+  const getStationData = (stationName, paramSuffix) => {
+    if (!graphData) return [];
+    
+    return graphData.map(item => ({
+      time: item.time,
+      fullDate: item.fullDate,
+      timestamp: item.timestamp,
+      value: item[`${stationName}_${paramSuffix}`]
+    })).filter(item => item.value !== null && item.value !== undefined);
+  };
+
+  /* Tooltip UI */
   const CustomTooltip = ({ active, payload, label, unit }) => {
     if (active && payload && payload.length) {
-      const dataPoint = graphData.find(item => item.time === label);
+      const dataPoint = payload[0]?.payload;
 
       return (
         <div className="bg-slate-800 p-2 sm:p-4 rounded-xl border border-slate-600 shadow-2xl max-w-[240px] sm:max-w-none">
@@ -125,25 +137,22 @@ const WaterTrends = () => {
           </p>
 
           <div className="space-y-0.5 sm:space-y-1">
-            {payload.map((entry, index) => {
-              const label = entry.dataKey.split("_")[0];
-              return (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div
-                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mr-1 sm:mr-2"
-                      style={{ backgroundColor: entry.color }}
-                    ></div>
-                    <span className="text-gray-200 text-[10px] sm:text-sm capitalize">
-                      {label}
-                    </span>
-                  </div>
-                  <span className="font-semibold text-white ml-2 sm:ml-4 text-[10px] sm:text-sm">
-                    {entry.value ? entry.value.toFixed(2) : "--"} {unit}
+            {payload.map((entry, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div
+                    className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mr-1 sm:mr-2"
+                    style={{ backgroundColor: entry.color }}
+                  ></div>
+                  <span className="text-gray-200 text-[10px] sm:text-sm capitalize">
+                    {entry.name || 'Value'}
                   </span>
                 </div>
-              )
-            })}
+                <span className="font-semibold text-white ml-2 sm:ml-4 text-[10px] sm:text-sm">
+                  {entry.value ? entry.value.toFixed(2) : "--"} {unit}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       );
@@ -151,120 +160,114 @@ const WaterTrends = () => {
     return null;
   };
 
-  /* Legend unchanged */
-  const renderCustomLegend = (props) => {
-    const { payload } = props;
+  /* Render single station chart */
+  const renderStationChart = (stationName, dataKeySuffix, title, color, unit) => {
+    const stationData = getStationData(stationName, dataKeySuffix);
+    const displayName = stationName.charAt(0).toUpperCase() + stationName.slice(1);
+
     return (
-      <div className="flex justify-center flex-wrap gap-2 sm:gap-4 mt-2 sm:mt-4">
-        {payload.map((entry, index) => (
-          <div key={index} className="flex items-center">
-            <div
-              className="w-3 h-1 sm:w-4 sm:h-1 rounded-full mr-1 sm:mr-2"
-              style={{ backgroundColor: entry.color }}
-            ></div>
-            <span className="text-[10px] sm:text-sm font-medium text-gray-200 capitalize">
-              {entry.value.split('_')[0]}
-            </span>
+      <div className="w-full md:w-[48%] mb-6 relative">
+        <div className={`absolute inset-0 rounded-2xl blur-xl -z-10 ${
+          isDarkMode ? "bg-gradient-to-br from-slate-800/10 to-blue-900/10"
+                      : "bg-gradient-to-br from-blue-100/10 to-blue-200/10"
+        }`}></div>
+
+        <div className={`rounded-2xl p-3 sm:p-6 border shadow-2xl w-full ${
+          isDarkMode ? "bg-slate-900/70 backdrop-blur-lg border-slate-800"
+                      : "bg-white/80 border-blue-200"
+        }`}>
+
+          <h2 className={`text-lg sm:text-xl font-bold text-center mb-2 uppercase tracking-wider ${
+            isDarkMode ? "text-white" : "text-slate-800"
+          }`}>
+            {displayName}
+          </h2>
+
+          <h3 className={`text-xs sm:text-sm font-medium mb-4 sm:mb-6 text-center ${
+            isDarkMode ? "text-gray-300" : "text-slate-600"
+          }`}>
+            {title}
+          </h3>
+
+          <div className="w-full h-[280px] sm:h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={stationData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                
+                <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" opacity={0.2} />
+
+                <XAxis
+                  dataKey="time"
+                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  interval="preserveStartEnd"
+                  height={40}
+                />
+
+                <YAxis
+                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  tickFormatter={(v) => v ? `${v} ${unit}` : "--"}
+                />
+
+                <Tooltip content={<CustomTooltip unit={unit} />} />
+                
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  name={displayName}
+                  stroke={color}
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, fill: color, stroke: "#fff", strokeWidth: 2 }}
+                  connectNulls={false}
+                />
+
+                <Brush
+                  dataKey="time"
+                  height={16}
+                  stroke="rgba(255,255,255,0.2)"
+                  fill="rgba(15,23,42,0.7)"
+                  tick={{ fontSize: 9, fill: "#9ca3af" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        ))}
+        </div>
       </div>
     );
   };
 
-  /* Recharts LineChart UI unchanged */
-  const renderLineChart = (dataKeySuffix, title, colors, unit) => (
-    <div className="mb-10 sm:mb-16 relative w-full lg:w-[90%] mx-auto">
+  /* Render parameter charts side by side */
+  const renderParameterCharts = (dataKeySuffix, title, colors, unit) => {
+    // Filter to only show Mana and Vasudhara
+    const targetStations = ['mana', 'vasudhara'].filter(s => 
+      stationNames.includes(s.toLowerCase())
+    );
 
-      <div className={`absolute inset-0 rounded-2xl blur-xl -z-10 ${
-        isDarkMode ? "bg-gradient-to-br from-slate-800/10 to-blue-900/10"
-                    : "bg-gradient-to-br from-blue-100/10 to-blue-200/10"
-      }`}></div>
+    if (targetStations.length === 0) {
+      return null;
+    }
 
-      <div className={`rounded-2xl p-3 sm:p-6 border shadow-2xl w-full ${
-        isDarkMode ? "bg-slate-900/70 backdrop-blur-lg border-slate-800"
-                    : "bg-white/80 border-blue-200"
-      }`}>
-
-        <h2 className={`text-lg sm:text-2xl font-bold text-center mb-0 sm:mb-1 uppercase tracking-wider ${
+    return (
+      <div className="mb-10 sm:mb-16 w-full">
+        <h2 className={`text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8 uppercase tracking-wider ${
           isDarkMode ? "text-white" : "text-slate-800"
         }`}>
-          {title.split(' (')[0]}
-        </h2>
-
-        <h3 className={`text-xs sm:text-md font-medium mb-4 sm:mb-6 text-center ${
-          isDarkMode ? "text-gray-300" : "text-slate-600"
-        }`}>
           {title}
-        </h3>
-
-        <div className="w-full h-[280px] sm:h-[420px]">
-          <ResponsiveContainer width="100%" height="100%">
-
-            <LineChart data={graphData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              
-              <defs>
-                {stationNames.map((station, i) => (
-                  <linearGradient key={station} id={`grad_${station}_${dataKeySuffix}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={colors[i % colors.length]} stopOpacity={0.6}/>
-                    <stop offset="90%" stopColor={colors[i % colors.length]} stopOpacity={0.1}/>
-                  </linearGradient>
-                ))}
-              </defs>
-
-              <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" opacity={0.2} />
-
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 10, fill: "#9ca3af" }}
-                interval="preserveStartEnd"
-                height={40}
-              />
-
-              <YAxis
-                tick={{ fontSize: 10, fill: "#9ca3af" }}
-                tickFormatter={(v) => v ? `${v} ${unit}` : "--"}
-              />
-
-              <Tooltip content={<CustomTooltip unit={unit} />} />
-              <Legend content={renderCustomLegend} />
-
-              {stationNames.map((station, i) => (
-                <Area
-                  key={`area_${station}`}
-                  type="monotone"
-                  dataKey={`${station}_${dataKeySuffix}`}
-                  stroke="transparent"
-                  fill={`url(#grad_${station}_${dataKeySuffix})`}
-                  fillOpacity={0.5}
-                />
-              ))}
-
-              {stationNames.map((station, i) => (
-                <Line
-                  key={`line_${station}`}
-                  type="monotone"
-                  dataKey={`${station}_${dataKeySuffix}`}
-                  stroke={colors[i % colors.length]}
-                  strokeWidth={1.2}
-                  dot={false}
-                  activeDot={{ r: 3, fill: colors[i % colors.length], stroke: "#fff" }}
-                />
-              ))}
-
-              <Brush
-                dataKey="time"
-                height={16}
-                stroke="rgba(255,255,255,0.2)"
-                fill="rgba(15,23,42,0.7)"
-                tick={{ fontSize: 9, fill: "#9ca3af" }}
-              />
-            </LineChart>
-
-          </ResponsiveContainer>
+        </h2>
+        
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 justify-center items-start">
+          {targetStations.map((station, index) => 
+            renderStationChart(
+              station.toLowerCase(),
+              dataKeySuffix,
+              title,
+              colors[index % colors.length],
+              unit
+            )
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -278,7 +281,7 @@ const WaterTrends = () => {
   }
 
   return (
-    <div className="min-h-screen py-10 px-10 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen py-10 px-4 sm:px-10 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
 
       <div className="flex flex-col items-center text-center mt-10 mb-16">
         <h1 className="text-4xl font-extrabold tracking-wide text-white mb-4">
@@ -307,10 +310,10 @@ const WaterTrends = () => {
         ))}
       </div>
 
-      <div className="space-y-20">
-        {renderLineChart('discharge', 'Water Discharge (m³/s)', ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'], 'm³/s')}
-        {renderLineChart('level', 'Water Level (m)', ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'], 'm')}
-        {renderLineChart('velocity', 'Water Velocity (m/s)', ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'], 'm/s')}
+      <div className="space-y-12 max-w-7xl mx-auto">
+        {renderParameterCharts('discharge', 'Water Discharge (m³/s)', ['#3b82f6', '#ef4444'], 'm³/s')}
+        {renderParameterCharts('level', 'Water Level (m)', ['#10b981', '#f59e0b'], 'm')}
+        {renderParameterCharts('velocity', 'Water Velocity (m/s)', ['#8b5cf6', '#ec4899'], 'm/s')}
       </div>
 
     </div>

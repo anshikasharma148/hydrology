@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  AreaChart, Area, Tooltip, XAxis, YAxis, ResponsiveContainer, Legend, Brush
+  LineChart, Line, Tooltip, XAxis, YAxis, ResponsiveContainer, Legend, Brush, CartesianGrid
 } from 'recharts';
 import { motion } from 'framer-motion';
 import Navbar from '../../../components/Navbar';
@@ -372,32 +372,58 @@ else if (stationKey === 'vasudhara') stationArr = json.data.Vasudhara;
         </div>
 
         <ResponsiveContainer width="100%" height={isDesktop ? 430 : 220}>
-          <AreaChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-            <defs>
-              {selectedParams.map((param) => (
-                <linearGradient key={param} id={`color${param}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={colors[param]} stopOpacity={0.8} />
-                  <stop offset="95%" stopColor={colors[param]} stopOpacity={0.1} />
-                </linearGradient>
-              ))}
-            </defs>
-            <XAxis dataKey="time" tick={{ fill: '#4b5563' }} reversed />
-            <YAxis tick={{ fill: '#4b5563' }} />
+          <LineChart data={data} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="#d1d5db" 
+              opacity={0.4}
+              vertical={false}
+            />
+            <XAxis 
+              dataKey="time" 
+              tick={{ fill: '#6b7280', fontSize: 11 }} 
+              reversed
+              axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+              tickLine={{ stroke: '#9ca3af' }}
+            />
+            <YAxis 
+              tick={{ fill: '#6b7280', fontSize: 11 }}
+              axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+              tickLine={{ stroke: '#9ca3af' }}
+            />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Brush dataKey="time" height={30} stroke="#409ac7" fill="#f3f4f6" />
+            <Legend 
+              wrapperStyle={{ paddingTop: '20px' }}
+              iconType="line"
+              formatter={(value) => <span style={{ color: '#374151', fontSize: '12px', fontWeight: '600' }}>{value}</span>}
+            />
+            <Brush 
+              dataKey="time" 
+              height={30} 
+              stroke="#409ac7" 
+              fill="#f3f4f6"
+              tickFormatter={(value) => value}
+            />
             {selectedParams.map((param) => (
-              <Area
+              <Line
                 key={param}
                 type="monotone"
                 dataKey={param}
                 stroke={colors[param]}
-                fill={`url(#color${param})`}
-                strokeWidth={2}
-                activeDot={{ r: 7, strokeWidth: 2, fill: '#fff', stroke: colors[param] }}
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ 
+                  r: 6, 
+                  strokeWidth: 2, 
+                  fill: '#fff', 
+                  stroke: colors[param],
+                  style: { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }
+                }}
+                connectNulls={false}
+                style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' }}
               />
             ))}
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
