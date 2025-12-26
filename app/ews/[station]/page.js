@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../../components/Navbar";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Thermometer, Battery, BatteryCharging, Zap, Sun, Activity, Ruler } from "lucide-react";
+import { ArrowLeft, Thermometer, Battery, BatteryCharging, Zap, Sun, Activity, Ruler, Droplet } from "lucide-react";
 
 import {
   FaWater,
@@ -20,6 +20,7 @@ import StationGraph from "../../../components/EWSStationGraph";
 const stationData = {
   mana: { name: "Mana", image: "/ews_images/manaimg.png" },
   vasudhara: { name: "Vasudhara", image: "/ews_images/vasudharaimg.png" },
+  benakuli: { name: "Benakuli", image: "/ews_images/binakuliimg.jpg" },
 };
 
 export default function StationPage() {
@@ -54,7 +55,7 @@ export default function StationPage() {
         });
 
         const json = await res.json();
-        const key = station === "mana" ? "Mana" : "Vasudhara";
+        const key = station === "mana" ? "Mana" : station === "benakuli" ? "Benakuli" : "Vasudhara";
         const arr = json?.data?.[key] || [];
 
         if (arr.length > 0) {
@@ -261,7 +262,7 @@ export default function StationPage() {
               icon={<FaArrowUp className="text-white" />}
               colorScheme="green"
           />
-        {station === "mana" && (
+        {(station === "mana" || station === "benakuli") && (
             <Card
               title="SNR"
               value={latestData.SNR}
@@ -271,6 +272,59 @@ export default function StationPage() {
             />
             )}
           </CategorySection>
+
+          {/* Benakuli-specific Parameters */}
+          {station === "benakuli" && (
+            <CategorySection title="Device Parameters" color="orange">
+              <Card
+                title="Device Temp"
+                value={latestData.device_temperature}
+                unit="°C"
+                icon={<Thermometer className="w-5 h-5 text-white" />}
+                fixed={1}
+                colorScheme="red"
+              />
+              <Card
+                title="Device Humidity"
+                value={latestData.device_relative_humidity}
+                unit="%"
+                icon={<Droplet className="w-5 h-5 text-white" />}
+                fixed={1}
+                colorScheme="cyan"
+              />
+              <Card
+                title="Input Voltage"
+                value={latestData.input_voltage}
+                unit="V"
+                icon={<Battery className="w-5 h-5 text-white" />}
+                fixed={2}
+                colorScheme="blue"
+              />
+              <Card
+                title="RSI Signal"
+                value={latestData.rsi_signal_strength}
+                unit="dBm"
+                icon={<Activity className="w-5 h-5 text-white" />}
+                colorScheme="green"
+              />
+              <Card
+                title="Flow Meter Power"
+                value={latestData.flow_meter_power_consumption}
+                unit="W"
+                icon={<Zap className="w-5 h-5 text-white" />}
+                fixed={2}
+                colorScheme="yellow"
+              />
+              <Card
+                title="Camera Power"
+                value={latestData.camera_power_consumption}
+                unit="W"
+                icon={<Sun className="w-5 h-5 text-white" />}
+                fixed={4}
+                colorScheme="orange"
+              />
+            </CategorySection>
+          )}
 
           {/* System Parameters - Only for Vasudhara */}
           {station === "vasudhara" && (

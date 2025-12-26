@@ -84,6 +84,14 @@ const FreshSensorMap = () => {
       image: "/dash_station_img/vasudhara.png",
     },
     {
+      key: "benakuli",
+      name: "Benakuli",
+      lat: 30.2711,
+      lng: 79.7436,
+      hasEws: true,
+      image: "/ews_images/binakuliimg.jpg",
+    },
+    {
       key: "barrage",
       name: "Barrage",
       lat: dmsToDecimal(30, 40, 20.9),
@@ -208,7 +216,7 @@ const FreshSensorMap = () => {
 
   return (
     <div className="relative w-full h-full min-h-[500px] rounded-lg overflow-hidden shadow-xl">
-      <MapContainer center={[30.775, 79.48]} zoom={12} className="w-full h-full z-0">
+      <MapContainer center={[30.53, 79.57]} zoom={11} className="w-full h-full z-0">
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
         {/* Stations */}
@@ -416,8 +424,58 @@ const FreshSensorMap = () => {
                               <Wind className="w-3 h-3" style={{ color: '#6ee7b7' }} />
                               <span style={{ color: '#cbd5e1' }}>Flow Dir</span>
                               </div>
-                            <span className="font-bold" style={{ color: '#6ee7b7' }}>{ews.flow_direction ?? "-"}°</span>
+                            <span className="font-bold" style={{ color: '#6ee7b7' }}>
+                              {typeof ews.flow_direction === 'string' 
+                                ? ews.flow_direction.charAt(0).toUpperCase() + ews.flow_direction.slice(1).toLowerCase()
+                                : ews.flow_direction ?? "-"}°</span>
                           </div>
+                        )}
+                        
+                        {ews.SNR !== undefined && ews.SNR !== null && (
+                          <div className="flex items-center justify-between p-1.5 rounded" style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+                            <div className="flex items-center gap-1">
+                              <Activity className="w-3 h-3" style={{ color: '#6ee7b7' }} />
+                              <span style={{ color: '#cbd5e1' }}>SNR</span>
+                            </div>
+                            <span className="font-bold" style={{ color: '#6ee7b7' }}>{ews.SNR ?? "-"} dB</span>
+                          </div>
+                        )}
+                        
+                        {/* Benakuli-specific parameters */}
+                        {s.key === "benakuli" && ews.device_temperature !== undefined && (
+                          <>
+                            <div className="flex items-center justify-between p-1.5 rounded" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+                              <div className="flex items-center gap-1">
+                                <Thermometer className="w-3 h-3" style={{ color: '#fca5a5' }} />
+                                <span style={{ color: '#cbd5e1' }}>Dev Temp</span>
+                              </div>
+                              <span className="font-bold" style={{ color: '#fca5a5' }}>{ews.device_temperature ?? "-"}°C</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between p-1.5 rounded" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+                              <div className="flex items-center gap-1">
+                                <Droplets className="w-3 h-3" style={{ color: '#93c5fd' }} />
+                                <span style={{ color: '#cbd5e1' }}>Dev Humidity</span>
+                              </div>
+                              <span className="font-bold" style={{ color: '#93c5fd' }}>{ews.device_relative_humidity ?? "-"}%</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between p-1.5 rounded" style={{ background: 'rgba(168, 85, 247, 0.1)' }}>
+                              <div className="flex items-center gap-1">
+                                <Gauge className="w-3 h-3" style={{ color: '#c4b5fd' }} />
+                                <span style={{ color: '#cbd5e1' }}>Input Voltage</span>
+                              </div>
+                              <span className="font-bold" style={{ color: '#c4b5fd' }}>{ews.input_voltage ?? "-"} V</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between p-1.5 rounded" style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+                              <div className="flex items-center gap-1">
+                                <Activity className="w-3 h-3" style={{ color: '#6ee7b7' }} />
+                                <span style={{ color: '#cbd5e1' }}>RSI Signal</span>
+                              </div>
+                              <span className="font-bold" style={{ color: '#6ee7b7' }}>{ews.rsi_signal_strength ?? "-"} dBm</span>
+                            </div>
+                          </>
                         )}
                       </div>
                       </div>

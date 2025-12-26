@@ -45,7 +45,7 @@ export default function Dashboard() {
   // AWS (existing) & EWS (new) live states
   const [weatherData, setWeatherData] = useState([]); // AWS live
   // changed to hold multiple EWS stations
-  const [ewsLatest, setEwsLatest] = useState({ Vasudhara: null, Mana: null });
+  const [ewsLatest, setEwsLatest] = useState({ Vasudhara: null, Mana: null, Benakuli: null });
   const [isDarkTheme, setIsDarkTheme] = useState(false);
 
   // DEVICE + STATION ID mapping
@@ -142,6 +142,7 @@ export default function Dashboard() {
       // Prepare defaults
       let vasudharaNorm = null;
       let manaNorm = null;
+      let benakuliNorm = null;
 
       // Vasudhara
       if (json?.data?.Vasudhara && Array.isArray(json.data.Vasudhara) && json.data.Vasudhara.length) {
@@ -208,11 +209,43 @@ manaNorm = {
 
       }
 
-      setEwsLatest({ Vasudhara: vasudharaNorm, Mana: manaNorm });
+      // Benakuli (new)
+      if (json?.data?.Benakuli && Array.isArray(json.data.Benakuli) && json.data.Benakuli.length) {
+        const arrB = json.data.Benakuli;
+        const candidateB = arrB.find((r) =>
+          [r.water_level, r.avg_surface_velocity, r.surface_velocity, r.water_dist_sensor, r.water_discharge, r.tilt_angle, r.flow_direction]
+            .some((x) => x !== null && x !== undefined && x !== "")
+        ) || arrB[0];
+
+        benakuliNorm = {
+          StationID: candidateB.StationID ?? null,
+          DeviceID: candidateB.DeviceID ?? null,
+          surface_velocity: safeParse(candidateB.surface_velocity),
+          avg_surface_velocity: safeParse(candidateB.avg_surface_velocity),
+          water_dist_sensor: safeParse(candidateB.water_dist_sensor),
+          water_level: safeParse(candidateB.water_level),
+          water_discharge: safeParse(candidateB.water_discharge),
+          tilt_angle: safeParse(candidateB.tilt_angle),
+          flow_direction: safeParse(candidateB.flow_direction),
+          SNR: safeParse(candidateB.SNR),
+          // Additional Benakuli fields
+          device_temperature: safeParse(candidateB.device_temperature),
+          device_relative_humidity: safeParse(candidateB.device_relative_humidity),
+          input_voltage: safeParse(candidateB.input_voltage),
+          rsi_signal_strength: safeParse(candidateB.rsi_signal_strength),
+          flow_meter_power_consumption: safeParse(candidateB.flow_meter_power_consumption),
+          camera_power_consumption: safeParse(candidateB.camera_power_consumption),
+          timestamp: candidateB.timestamp ?? null,
+          UID: candidateB.UID ?? null,
+          raw: candidateB,
+        };
+      }
+
+      setEwsLatest({ Vasudhara: vasudharaNorm, Mana: manaNorm, Benakuli: benakuliNorm });
       setLastUpdated(new Date().toLocaleString());
     } catch (e) {
       console.error("EWS fetch failed", e);
-      setEwsLatest({ Vasudhara: null, Mana: null });
+      setEwsLatest({ Vasudhara: null, Mana: null, Benakuli: null });
     } finally {
       setIsLoading(false);
     }
@@ -442,13 +475,34 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
   // flow direction rules
   const displayFlowDirection = (val) => {
     if (val === null || val === undefined || val === "") return "-";
+    // Handle string values like "outgoing", "incoming"
+    if (typeof val === "string") {
+      const lowerVal = val.toLowerCase();
+      if (lowerVal === "outgoing" || lowerVal === "incoming") {
+        return val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+      }
+    }
     if (Number(val) === 0) return "Incoming";
     const n = Number(val);
     return Number.isFinite(n) ? `${n}°` : "-";
   };
 
-  // count actives across both stations
-  const activeCount = ["Vasudhara", "Mana"].reduce((acc, key) => {
+  // Helper to show "Nil" for Mana, otherwise format the value
+  const formatValueForMana = (stationKey, value, digits = 2, suffix = "") => {
+    if (stationKey === "Mana") return "Nil";
+    const formatted = formatValue(value, digits);
+    if (formatted === "-") return "-";
+    return suffix ? `${formatted} ${suffix}` : formatted;
+  };
+
+  // Helper to show "Nil" for Mana flow direction
+  const displayFlowDirectionForMana = (stationKey, val) => {
+    if (stationKey === "Mana") return "Nil";
+    return displayFlowDirection(val);
+  };
+
+  // count actives across all stations
+  const activeCount = ["Vasudhara", "Mana", "Benakuli"].reduce((acc, key) => {
     const rec = ewsLatest?.[key];
     if (rec && rec.timestamp) {
       const parsed = Date.parse(rec.timestamp);
@@ -463,6 +517,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
   const stationsToShow = [
     { key: "Vasudhara", label: "Vasudhara" },
     { key: "Mana", label: "Mana" },
+    { key: "Benakuli", label: "Benakuli" },
   ];
 
   return (
@@ -484,7 +539,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
       >
         <IoWater className={`text-2xl mr-2 ${isDarkTheme ? "text-cyan-300" : "text-blue-600"}`} />
         <h2 className={`text-lg font-semibold ${isDarkTheme ? "text-white" : "text-gray-700"}`}>
-          Barrage Monitoring
+          Early Warning Stations (EWS)
         </h2>
 
         <div
@@ -539,7 +594,16 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                         </p>
                       </div>
 
-                      <BarrageBadge timestamp={data.timestamp} />
+                      {st.key === "Mana" ? (
+                        <div className={isDarkTheme
+                          ? "flex items-center bg-red-500/10 text-red-200 text-[11px] px-2 py-0.5 rounded-full font-semibold border border-red-400/30"
+                          : "flex items-center bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-semibold border border-red-200"}>
+                          <span className="w-2 h-2 bg-red-500 rounded-full mr-1" />
+                          Offline
+                        </div>
+                      ) : (
+                        <BarrageBadge timestamp={data.timestamp} />
+                      )}
                     </div>
                   </div>
 
@@ -563,7 +627,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Surface Velocity
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {formatValue(data.surface_velocity)} m/s
+                          {formatValueForMana(st.key, data.surface_velocity, 2, "m/s")}
                         </p>
                       </div>
 
@@ -574,7 +638,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Avg Velocity
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {formatValue(data.avg_surface_velocity, 2)} m/s
+                          {formatValueForMana(st.key, data.avg_surface_velocity, 2, "m/s")}
                         </p>
                       </div>
 
@@ -586,7 +650,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                             SNR
                           </p>
                           <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                            {formatValue(data.SNR, 2)} dB
+                            {formatValueForMana(st.key, data.SNR, 2, "dB")}
                           </p>
                         </div>
                       )}
@@ -598,9 +662,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Discharge
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {data.water_discharge === null
-                            ? "-"
-                            : `${formatValue(data.water_discharge, 2)} m³/s`}
+                          {formatValueForMana(st.key, data.water_discharge, 2, "m³/s")}
                         </p>
                       </div>
                     </div>
@@ -627,7 +689,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Water Level
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {formatValue(data.water_level, 2)} m
+                          {formatValueForMana(st.key, data.water_level, 2, "m")}
                         </p>
                       </div>
 
@@ -638,7 +700,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Distance from Sensor
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {formatValue(data.water_dist_sensor, 2)} m
+                          {formatValueForMana(st.key, data.water_dist_sensor, 2, "m")}
                         </p>
                       </div>
 
@@ -649,7 +711,7 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Tilt
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {formatValue(data.tilt_angle, 1)}°
+                          {formatValueForMana(st.key, data.tilt_angle, 1, "°")}
                         </p>
                       </div>
 
@@ -660,13 +722,13 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                           Flow Dir
                         </p>
                         <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                          {displayFlowDirection(data.flow_direction)}
+                          {displayFlowDirectionForMana(st.key, data.flow_direction)}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* NEW PARAMETERS SECTION - Only for Vasudhara */}
+                  {/* Internal Temperature - Only for Vasudhara */}
                   {st.key === "Vasudhara" && (
                     <div
                       className={`p-3 rounded-xl border mt-3 ${
@@ -676,10 +738,10 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                       }`}
                     >
                       <p className={`text-xs mb-2 ${isDarkTheme ? "text-amber-200" : "text-amber-600"}`}>
-                        System Parameters
+                        Device Parameters
                       </p>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3">
                         {/* Internal Temperature */}
                         <div>
                           <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
@@ -690,50 +752,108 @@ function BarrageMonitoring({ stationLabels, ewsLatest, isDarkTheme, BarrageBadge
                             {formatValue(data.internal_temperature, 1)}°C
                           </p>
                         </div>
+                      </div>
+                    </div>
+                  )}
 
-                        {/* Charge Current */}
-                        <div>
-                          <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
-                            <BatteryCharging className="w-5 h-5 text-green-400" />
-                            Charge Current
-                          </p>
-                          <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                            {formatValue(data.charge_current, 4)} A
-                          </p>
-                        </div>
+                  {/* Power Section - For Vasudhara and Benakuli */}
+                  {(st.key === "Vasudhara" || st.key === "Benakuli") && (
+                    <div
+                      className={`p-3 rounded-xl border mt-3 ${
+                        isDarkTheme
+                          ? "bg-[#0f2a59]/60 border-[#1f4fa8]/30 text-slate-100"
+                          : "bg-white border-gray-100"
+                      }`}
+                    >
+                      <p className={`text-xs mb-2 ${isDarkTheme ? "text-amber-200" : "text-amber-600"}`}>
+                        Power
+                      </p>
 
-                        {/* Absorbed Current */}
-                        <div>
-                          <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
-                            <Zap className="w-5 h-5 text-yellow-400" />
-                            Absorbed Current
-                          </p>
-                          <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                            {formatValue(data.absorbed_current, 4)} A
-                          </p>
-                        </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {st.key === "Vasudhara" && (
+                          <>
+                            {/* Charge Current */}
+                            <div>
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <BatteryCharging className="w-5 h-5 text-green-400" />
+                                Charge Current
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValue(data.charge_current, 4)} A
+                              </p>
+                            </div>
 
-                        {/* Battery Voltage */}
-                        <div>
-                          <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
-                            <Battery className="w-5 h-5 text-blue-400" />
-                            Battery Voltage
-                          </p>
-                          <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                            {formatValue(data.battery_voltage, 1)} V
-                          </p>
-                        </div>
+                            {/* Absorbed Current */}
+                            <div>
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <Zap className="w-5 h-5 text-yellow-400" />
+                                Absorbed Current
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValue(data.absorbed_current, 4)} A
+                              </p>
+                            </div>
 
-                        {/* Solar Panel Tracking */}
-                        <div className="col-span-2">
-                          <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
-                            <Sun className="w-5 h-5 text-orange-400" />
-                            Solar Panel Tracking
-                          </p>
-                          <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
-                            {formatValue(data.solar_panel_tracking, 1)} V
-                          </p>
-                        </div>
+                            {/* Battery Voltage */}
+                            <div>
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <Battery className="w-5 h-5 text-blue-400" />
+                                Battery Voltage
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValue(data.battery_voltage, 1)} V
+                              </p>
+                            </div>
+
+                            {/* Solar Panel Tracking */}
+                            <div>
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <Sun className="w-5 h-5 text-orange-400" />
+                                Solar Panel Tracking
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValue(data.solar_panel_tracking, 1)} V
+                              </p>
+                            </div>
+                          </>
+                        )}
+
+                        {st.key === "Benakuli" && (
+                          <>
+                            {/* Input Voltage */}
+                            <div>
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <Battery className="w-5 h-5 text-blue-400" />
+                                Input Voltage
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValueForMana(st.key, data.input_voltage, 2, "V")}
+                              </p>
+                            </div>
+
+                            {/* Flow Meter Power */}
+                            <div>
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <Zap className="w-5 h-5 text-yellow-400" />
+                                Flow Meter Power
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValueForMana(st.key, data.flow_meter_power_consumption, 2, "W")}
+                              </p>
+                            </div>
+
+                            {/* Camera Power */}
+                            <div className="col-span-2">
+                              <p className={`text-xs flex items-center gap-1.5 ${isDarkTheme ? "text-slate-300" : "text-gray-500"}`}>
+                                <Sun className="w-5 h-5 text-orange-400" />
+                                Camera Power
+                              </p>
+                              <p className={`text-xs font-semibold ${isDarkTheme ? "text-white" : "text-gray-800"}`}>
+                                {formatValueForMana(st.key, data.camera_power_consumption, 4, "W")}
+                              </p>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -814,7 +934,7 @@ function WeatherStationsSection({ weatherData, StationBadge, isDarkTheme, timest
       >
         <IoPartlySunny className={`text-xl ${isDarkTheme ? "text-amber-300" : "text-amber-600"}`} />
         <h2 className={`text-base font-semibold ${isDarkTheme ? "text-white" : "text-gray-700"}`}>
-          Weather Stations
+          Automated Weather Stations (AWS)
         </h2>
         <span
           className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${

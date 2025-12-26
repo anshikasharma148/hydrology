@@ -32,10 +32,11 @@ import {
 import Navbar from "components/Navbar";
 import { useRouter } from "next/navigation";
 
-// KEEP ONLY 2 EWS STATIONS
+// EWS STATIONS
 const ewsStations = [
   { name: "Vasudhara", slug: "vasudhara" },
   { name: "Mana", slug: "mana" },
+  { name: "Benakuli", slug: "benakuli" },
 ];
 
 // AWS stations unchanged
@@ -137,8 +138,9 @@ export default function TrendsPage() {
         }));
       } else {
         // NEW EWS API
-        const key = selectedStation === "mana" ? "Mana" : "Vasudhara";
+        const key = selectedStation === "mana" ? "Mana" : selectedStation === "benakuli" ? "Benakuli" : "Vasudhara";
         const isVasudhara = key === "Vasudhara";
+        const isBenakuli = key === "Benakuli";
 
         const arr = raw?.data?.[key] || [];
 
@@ -151,7 +153,7 @@ export default function TrendsPage() {
           avg_surface_velocity: Number(item.avg_surface_velocity),
           water_dist_sensor: Number(item.water_dist_sensor),
           tilt_angle: Number(item.tilt_angle),
-          flow_direction: Number(item.flow_direction),
+          flow_direction: typeof item.flow_direction === "string" ? item.flow_direction : Number(item.flow_direction),
           SNR: item.SNR ? Number(item.SNR) : null,
           };
 
@@ -162,6 +164,16 @@ export default function TrendsPage() {
             baseData.absorbed_current = item.observed_current ? Number(item.observed_current) : null;
             baseData.battery_voltage = item.battery_voltage ? Number(item.battery_voltage) : null;
             baseData.solar_panel_tracking = item.solar_panel_tracking ? Number(item.solar_panel_tracking) : null;
+          }
+
+          // Add Benakuli-specific fields
+          if (isBenakuli) {
+            baseData.device_temperature = item.device_temperature ? Number(item.device_temperature) : null;
+            baseData.device_relative_humidity = item.device_relative_humidity ? Number(item.device_relative_humidity) : null;
+            baseData.input_voltage = item.input_voltage ? Number(item.input_voltage) : null;
+            baseData.rsi_signal_strength = item.rsi_signal_strength ? Number(item.rsi_signal_strength) : null;
+            baseData.flow_meter_power_consumption = item.flow_meter_power_consumption ? Number(item.flow_meter_power_consumption) : null;
+            baseData.camera_power_consumption = item.camera_power_consumption ? Number(item.camera_power_consumption) : null;
           }
 
           return baseData;
@@ -272,6 +284,17 @@ export default function TrendsPage() {
     { key: "SNR", label: "SNR", unit: "dB", icon: <Gauge /> },
   ];
 
+  // Benakuli-specific fields
+  const benakuliFields = [
+    { key: "SNR", label: "SNR", unit: "dB", icon: <Gauge /> },
+    { key: "device_temperature", label: "Device Temperature", unit: "°C", icon: <Thermometer /> },
+    { key: "device_relative_humidity", label: "Device Humidity", unit: "%", icon: <Droplet /> },
+    { key: "input_voltage", label: "Input Voltage", unit: "V", icon: <Battery /> },
+    { key: "rsi_signal_strength", label: "RSI Signal Strength", unit: "dBm", icon: <Activity /> },
+    { key: "flow_meter_power_consumption", label: "Flow Meter Power", unit: "W", icon: <Zap /> },
+    { key: "camera_power_consumption", label: "Camera Power", unit: "W", icon: <Sun /> },
+  ];
+
   // Determine which EWS fields to show based on selected station
   const getEwsFields = () => {
     if (selectedType !== "EWS") return [];
@@ -280,6 +303,8 @@ export default function TrendsPage() {
       return [...baseEwsFields, ...vasudharaFields];
     } else if (selectedStation === "mana") {
       return [...baseEwsFields, ...manaFields];
+    } else if (selectedStation === "benakuli") {
+      return [...baseEwsFields, ...benakuliFields];
     }
     return baseEwsFields;
   };

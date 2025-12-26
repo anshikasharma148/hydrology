@@ -161,12 +161,12 @@ const WaterTrends = () => {
   };
 
   /* Render single station chart */
-  const renderStationChart = (stationName, dataKeySuffix, title, color, unit) => {
+  const renderStationChart = (stationName, dataKeySuffix, title, color, unit, key) => {
     const stationData = getStationData(stationName, dataKeySuffix);
     const displayName = stationName.charAt(0).toUpperCase() + stationName.slice(1);
 
     return (
-      <div className="w-full md:w-[48%] mb-6 relative">
+      <div key={key} className="w-full md:w-[48%] mb-6 relative">
         <div className={`absolute inset-0 rounded-2xl blur-xl -z-10 ${
           isDarkMode ? "bg-gradient-to-br from-slate-800/10 to-blue-900/10"
                       : "bg-gradient-to-br from-blue-100/10 to-blue-200/10"
@@ -237,8 +237,8 @@ const WaterTrends = () => {
 
   /* Render parameter charts side by side */
   const renderParameterCharts = (dataKeySuffix, title, colors, unit) => {
-    // Filter to only show Mana and Vasudhara
-    const targetStations = ['mana', 'vasudhara'].filter(s => 
+    // Filter to show Mana, Vasudhara, and Benakuli
+    const targetStations = ['mana', 'vasudhara', 'benakuli'].filter(s => 
       stationNames.includes(s.toLowerCase())
     );
 
@@ -261,7 +261,8 @@ const WaterTrends = () => {
               dataKeySuffix,
               title,
               colors[index % colors.length],
-              unit
+              unit,
+              `${station}-${dataKeySuffix}-${index}`
             )
           )}
         </div>

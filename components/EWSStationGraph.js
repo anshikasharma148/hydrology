@@ -145,6 +145,8 @@ export default function StationGraph({ station }) {
           ? "Mana"
           : station === "vasudhara"
           ? "Vasudhara"
+          : station === "benakuli"
+          ? "Benakuli"
           : null;
 
       if (!stationKey) throw new Error("Unknown station");

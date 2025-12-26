@@ -15,7 +15,8 @@ const ReportsDashboard = () => {
   // <-- Per your request: only real EWS-supported stations kept (Option B)
   const ewsStations = [
     { name: "Vasudhara", slug: "vasudhara" },
-    { name: "Mana", slug: "mana" }
+    { name: "Mana", slug: "mana" },
+    { name: "Benakuli", slug: "benakuli" }
   ];
 
   const awsStations = [
@@ -139,16 +140,19 @@ const ReportsDashboard = () => {
         }
 
         // ------------------------
-        // EWS: use result.data.Mana or result.data.Vasudhara
+        // EWS: use result.data.Mana, result.data.Vasudhara, or result.data.Benakuli
         // ------------------------
         if (stationType === "EWS" && result?.data) {
           const stationKey =
             selectedStation.toLowerCase().includes("mana")
               ? "Mana"
+              : selectedStation.toLowerCase().includes("benakuli")
+              ? "Benakuli"
               : "Vasudhara";
 
           const stationData = result.data?.[stationKey];
           const isVasudhara = stationKey === "Vasudhara";
+          const isBenakuli = stationKey === "Benakuli";
 
           if (Array.isArray(stationData)) {
             formattedData = stationData.map((item) => {
@@ -174,6 +178,16 @@ const ReportsDashboard = () => {
                 baseData.absorbed_current = item.observed_current;
                 baseData.battery_voltage = item.battery_voltage;
                 baseData.solar_panel_tracking = item.solar_panel_tracking;
+              }
+
+              // Add Benakuli-specific fields
+              if (isBenakuli) {
+                baseData.device_temperature = item.device_temperature;
+                baseData.device_relative_humidity = item.device_relative_humidity;
+                baseData.input_voltage = item.input_voltage;
+                baseData.rsi_signal_strength = item.rsi_signal_strength;
+                baseData.flow_meter_power_consumption = item.flow_meter_power_consumption;
+                baseData.camera_power_consumption = item.camera_power_consumption;
               }
 
               return baseData;
